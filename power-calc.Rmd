@@ -1,0 +1,48 @@
+---
+title: "Untitled"
+author: "Rebecca Hoyd"
+date: "May 15, 2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+library(wmwpow)
+```
+
+# Friedman test
+```{r}
+simfun <- function(nblocks=6, means=c(1,1), within.sd=1, between.sd=1) {
+  g <- factor(rep(seq_len(nblocks), each=length(means)))
+  t <- rep(seq_along(means), nblocks)
+  y <- means[t] + rnorm(nblocks, 0, between.sd)[g] + rnorm(length(g),
+0, within.sd)
+  friedman.test(y ~ t | g)$p.value
+}
+
+# test size of test
+set.seed(112358)
+out2 <- replicate(1000, simfun(nblocks=6, means=c(0,1)))
+hist(out2)
+mean(out2 <= 0.05)
+```
+
+
+# Wilcox
+
+```{r}
+
+simfun.wilcox <- function(n1=75, n2=n1, mu1=1, mu2=mu1){
+x1 <- rnorm(n1, 1/mu1)
+x2 <- rnorm(n2, 1/mu2)
+wilcox.test(x1,x2)$p.value
+}
+
+set.seed(876543)
+out <- replicate(10000, simfun.wilcox(mu1=1,mu2=1.9))
+hist(out)
+abline(v=0.05,col='red')
+mean(out <= 0.05)
+```
