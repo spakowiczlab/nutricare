@@ -1,6 +1,6 @@
 ---
-title: "Untitled"
-author: "Rebecca Hoyd"
+title: "Analysis plan and power calculations for the NutriCare Study"
+author: "Dan Spakowicz and Rebecca Hoyd"
 date: "May 15, 2020"
 output: html_document
 ---
@@ -10,56 +10,135 @@ knitr::opts_chunk$set(echo = TRUE)
 
 library(tidyverse)
 library(wmwpow)
+library(MESS)
+library(pwr)
 ```
 
-# Friedman test
+# Overview of the NutriCare Study
+
+The NutriCare Study will evaluate whether nutritional counseling and dietary modification affect the health and survival of high-risk patients undergoing treatment for lung cancer. The study will enroll 150 patients and randomize to a dietary intervention arm (3 home-delivered medically-tailored meals per day provided for 6 months plus individualized nutrition counseling provided by Registered Dietitians for 8 months) versus a passive nutrition education "enhanced control" arm.
+
+# Hypothesis 1
+## Strong baseline differences (regional, demographic) will result in the 3-month samples clustering (by non-metric multidimensional scaling) more closely with that individual’s baseline sample than with the other 3-month samples grouped by MTM category. 
+## Conversely, the 8-month samples will cluster more closely with other 8-month samples by MTM category, indicating the long-term dietary intervention shifted the microbiomes in a consistent way.
+
+### Methods
+
+Sample clustering by individual versus by time point will be the assessed within an NMDS plot. 
+* Distances to the cluster centroid (normally distributed) will be compared between the NutriCare and NutriTool 8-month time point clusters. 
+* Distances to cluster centroid between clusters assigned by individual (all three time-points), versus by MTM category (3-month (hypothesis 1) and 8-month (hypothesis 2) time points, separately)).
+
 ```{r}
-simfun <- function(nblocks=10, means=c(1,1), within.sd=1, between.sd=1) {
-  g <- factor(rep(seq_len(nblocks), each=length(means)))
-  t <- rep(seq_along(means), nblocks)
-  y <- means[t] + rnorm(nblocks, 0, between.sd)[g] + rnorm(length(g),
-0, within.sd)
-  friedman.test(y ~ t | g)$p.value
+
+pwr.t.test(d = -0.8,
+           sig.level = 0.05,
+           power = 0.8,
+           alternative = "less",
+           type = "two.sample")
+
+MESS::power.t.test(delta = 10,
+             sd = 5, 
+             power = 0.8, 
+             sig.level = 0.05,
+             ratio = 5,
+             sd.ratio = 5,
+             type = "two.sample",
+             alternative = "one.sided")
+
+
+power.t.test(power = .80,
+             delta = .64,
+             sd = 0.64,
+             alternative = "one.sided")
+
+# 3.3.5.2
+###### Power to simultaneously estimate covariates ###########
+
+n = 15
+sig.level <- 0.05
+
+# Degrees of freedom for the tests  (X continuous variables - 1)
+u <- seq(1, 20)
+
+# Degrees of freedom of the error (v = n − u − 1)
+v <- c()
+
+effect.size <- 0.8
+
+for (i in u) {
+  v[i] <- pwr.f2.test(u = i, f2 = effect.size, sig.level = sig.level, power = 0.8)$v
 }
 
-# test size of test
-set.seed(112358)
-out2 <- replicate(1000, simfun(nblocks=12, means=c(1,1,1,2,2,2)))
-hist(out2)
-mean(out2 <= 0.05)
+n <- v + u + 1
+
+df <- data.frame(u = u,
+                 v = v,
+                 n = n)
+df %>%
+  filter(n < 70 & n > 5) %>%
+  ggplot(aes(n, u)) +
+  geom_line(lwd = 1) +
+  theme_bw() +
+  labs(x = "Sample size",
+       y = "Number of Covariates") +
+  annotate("text", x = 25, y = 13, 
+           label = "Power = 80%", size = 3, hjust = 0) +
+  annotate("text", x = 25, y = 12,
+           label = "alpha = 0.05", size = 3, hjust = 0) +
+  annotate("text", x = 25, y = 11, 
+           label = "Effect size = 0.35", size = 3, hjust = 0)
+
+
+
+pwr::pwr.t.test(n = NULL,
+                sig.level = 0.05,
+                power = 0.8,
+                alternative = "greater",
+                d = 0.85)
+
+FITNESS preliminary data (Figure 2B) mean distance to centroid = 0.27 mds, sd = 0.17,  = 0.05, calculated with the pwr package in R36). 
 ```
 
-```{r}
-nblocks=6
-means=c(rep(1,12))
-within.sd=1
-between.sd=1
-  g <- factor(rep(seq_len(nblocks), each=length(means)))
-  t <- rep(seq_along(means), nblocks)
-  y <- means[t] + rnorm(nblocks, 0, between.sd)[g] + rnorm(length(g),
-0, within.sd)
-  friedman.test(y ~ t | g)$p.value
-```
+The 8-month time point is expected to cluster MTM category, of which NutriCare offers five options (Section 1.5). A sample size of 10 patients is estimated to have 80% power to detect a difference in means of one standard deviation (FITNESS preliminary data (Figure 2B) mean distance to centroid = 0.27 mds, sd = 0.17,  = 0.05, calculated with the pwr package in R36). Roughly equal distribution of patients across MTM categories would have sufficient sample size to test all MTMs.
 
-# Wilcox
 
-```{r}
+# Hypothesis 2
+## The NutriCare arm will show a decrease in markers of systemic inflammation (modified Glasgow Prognostic Score) over time, with different effect sizes by MTM category. 
 
-simfun.wilcox <- function(n1=75, n2=n1, mu1=1, mu2=mu1){
-x1 <- rnorm(n1, 1/mu1)
-x2 <- rnorm(n2, 1/mu2)
-wilcox.test(x1,x2)$p.value
+### Methods
+* mGPS will be calculated using the levels of plasma CRP and albumin (CRP threshold at 10 mg/L, albumin at 35 g/L, ordinal variable range 0-2). 
+* the change in mGPS will be assessed (1) from baseline and 3 months, and (2) from baseline to 8 months, and compare the changes between the intervention and control groups (i.e., change-in-change).
+* The comparison between NutriCare and NutriTool (binary) predictor variable will be assessed using a paired Mann Whitney Wilcoxon test. 
+
+```{r wilcox test}
+# Sample size of the intervention arm (NutriCare)
+n.int <- 75
+# Sample size of the control arm (NutriTool)
+n.con <- 75
+
+# Function for simulating distributions as a function of means and sample sizes
+simfun.wilcox <- function(n1 = n.int, n2 = n.con, mu1 = 1, mu2 = mu1) {
+  # Normally distributed values
+  x1 <- rnorm(n1, 1 / mu1)
+  x2 <- rnorm(n2, 1 / mu2)
+  wilcox.test(x1, x2)$p.value
 }
+
 
 set.seed(876543)
-out <- replicate(10000, simfun.wilcox(mu1=1,mu2=1.9))
+
+# Set effect size to 1.9-fold change, replicate 1000 times 
+out <- replicate(10000, simfun.wilcox(mu1 = 1, mu2 = 1.9))
 hist(out)
 abline(v=0.05,col='red')
 mean(out <= 0.05)
 ```
 
-```{r}
-simfun.t <- function(n1=75, n2=n1, mu1=1, mu2=mu1){
+Mann Whitney Wilcoxon test suggest that 75 patients per arm will give 80% power to detect a 1.9-fold change in mGPS. 
+
+
+```{r ttest}
+simfun.t <- function(n1 = n.int, n2 = n.con, mu1 = 1, mu2 = mu1){
 x1 <- rnorm(n1, 1/mu1)
 x2 <- rnorm(n2, 1/mu2)
 t.test(x1,x2, alternative = "g")$p.value
@@ -71,3 +150,36 @@ hist(out)
 abline(v=0.05,col='red')
 mean(out <= 0.05)
 ```
+
+If the mGPS scores are Gaussian, a t-test of the same sample size could detect a 1.73-fold change with 82.5% power. 
+
+
+* The MTM (categorical) predictor will be assessed using a Friedman test (non-parametric repeated-measures ANOVA) with the effect size estimated by Kendall’s coefficient of concordance, where the NutriTool arm will be incorporated as another MTM category and the index of the estimate. 
+
+```{r friedman}
+
+simfun <- function(nblocks = 10, 
+                   means = c(1, 1), 
+                   within.sd = 1, 
+                   between.sd = 1) {
+  g <- factor(rep(seq_len(nblocks), each=length(means)))
+  t <- rep(seq_along(means), nblocks)
+  y <- means[t] + rnorm(nblocks, 0, between.sd)[g] + 
+    rnorm(length(g),0, within.sd)
+  friedman.test(y ~ t | g)$p.value
+}
+
+# test size of test
+set.seed(112358)
+out2 <- replicate(1000, simfun(nblocks = 12, means = c(1, 1, 1, 2, 2, 2)
+                               )
+                  )
+hist(out2)
+mean(out2 <= 0.05)
+```
+
+A Friedman test shows 80% power to detect a 2-fold change in means between MTM categories. 
+
+
+
+
