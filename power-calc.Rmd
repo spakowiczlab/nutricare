@@ -2,7 +2,9 @@
 title: "Analysis plan and power calculations for the NutriCare Study"
 author: "Dan Spakowicz and Rebecca Hoyd"
 date: "May 15, 2020"
-output: html_document
+output:
+  html_document: default
+  pdf_document: default
 ---
 
 ```{r setup, include=FALSE}
@@ -13,6 +15,8 @@ library(wmwpow)
 library(MESS)
 library(pwr)
 ```
+
+The purpose of this script is to describe and freeze a version of the analysis plan associated with the NutriCare Study, which is expected to open in September of 2020. Analysis is expected in late 2021. 
 
 # Overview of the NutriCare Study
 
@@ -29,14 +33,7 @@ Sample clustering by individual versus by time point will be the assessed within
 * Distances to cluster centroid between clusters assigned by individual (all three time-points), versus by MTM category (3-month (hypothesis 1) and 8-month (hypothesis 2) time points, separately)).
 
 ```{r}
-
-pwr.t.test(d = -0.8,
-           sig.level = 0.05,
-           power = 0.8,
-           alternative = "less",
-           type = "two.sample")
-
-MESS::power.t.test(delta = 10,
+MESS::power_t_test(delta = 10,
              sd = 5, 
              power = 0.8, 
              sig.level = 0.05,
@@ -44,62 +41,9 @@ MESS::power.t.test(delta = 10,
              sd.ratio = 5,
              type = "two.sample",
              alternative = "one.sided")
-
-
-power.t.test(power = .80,
-             delta = .64,
-             sd = 0.64,
-             alternative = "one.sided")
-
-# 3.3.5.2
-###### Power to simultaneously estimate covariates ###########
-
-n = 15
-sig.level <- 0.05
-
-# Degrees of freedom for the tests  (X continuous variables - 1)
-u <- seq(1, 20)
-
-# Degrees of freedom of the error (v = n − u − 1)
-v <- c()
-
-effect.size <- 0.8
-
-for (i in u) {
-  v[i] <- pwr.f2.test(u = i, f2 = effect.size, sig.level = sig.level, power = 0.8)$v
-}
-
-n <- v + u + 1
-
-df <- data.frame(u = u,
-                 v = v,
-                 n = n)
-df %>%
-  filter(n < 70 & n > 5) %>%
-  ggplot(aes(n, u)) +
-  geom_line(lwd = 1) +
-  theme_bw() +
-  labs(x = "Sample size",
-       y = "Number of Covariates") +
-  annotate("text", x = 25, y = 13, 
-           label = "Power = 80%", size = 3, hjust = 0) +
-  annotate("text", x = 25, y = 12,
-           label = "alpha = 0.05", size = 3, hjust = 0) +
-  annotate("text", x = 25, y = 11, 
-           label = "Effect size = 0.35", size = 3, hjust = 0)
-
-
-
-pwr::pwr.t.test(n = NULL,
-                sig.level = 0.05,
-                power = 0.8,
-                alternative = "greater",
-                d = 0.85)
-
-FITNESS preliminary data (Figure 2B) mean distance to centroid = 0.27 mds, sd = 0.17,  = 0.05, calculated with the pwr package in R36). 
 ```
 
-The 8-month time point is expected to cluster MTM category, of which NutriCare offers five options (Section 1.5). A sample size of 10 patients is estimated to have 80% power to detect a difference in means of one standard deviation (FITNESS preliminary data (Figure 2B) mean distance to centroid = 0.27 mds, sd = 0.17,  = 0.05, calculated with the pwr package in R36). Roughly equal distribution of patients across MTM categories would have sufficient sample size to test all MTMs.
+A sample size of 10 patients is estimated to have 80% power to detect a difference in means of one standard deviation (FITNESS preliminary data (Figure 2B) mean distance to centroid = 0.27 mds, sd = 0.17, \[\alpha = 0.05\]. Roughly equal distribution of patients across MTM categories would have sufficient sample size to test all MTMs.
 
 
 # Hypothesis 2
@@ -181,5 +125,63 @@ mean(out2 <= 0.05)
 A Friedman test shows 80% power to detect a 2-fold change in means between MTM categories. 
 
 
+# Exploratory analyses
+
+# Number of covariates that can be simultaneously estimated in linear models (controlling variables)
+```{r}
+# 3.3.5.2
+###### Power to simultaneously estimate covariates ###########
+
+n = 15
+sig.level <- 0.05
+
+# Degrees of freedom for the tests  (X continuous variables - 1)
+u <- seq(1, 20)
+
+# Degrees of freedom of the error (v = n − u − 1)
+v <- c()
+
+effect.size <- 0.8
+
+for (i in u) {
+  v[i] <- pwr.f2.test(u = i, f2 = effect.size, sig.level = sig.level, power = 0.8)$v
+}
+
+n <- v + u + 1
+
+df <- data.frame(u = u,
+                 v = v,
+                 n = n)
+df %>%
+  filter(n < 70 & n > 5) %>%
+  ggplot(aes(n, u)) +
+  geom_line(lwd = 1) +
+  theme_bw() +
+  labs(x = "Sample size",
+       y = "Number of Covariates") +
+  annotate("text", x = 25, y = 13, 
+           label = "Power = 80%", size = 3, hjust = 0) +
+  annotate("text", x = 25, y = 12,
+           label = "alpha = 0.05", size = 3, hjust = 0) +
+  annotate("text", x = 25, y = 11, 
+           label = "Effect size = 0.35", size = 3, hjust = 0)
+```
 
 
+
+## Repoducibility
+
+<details><summary>Reproducibility receipt</summary>
+
+```{r}
+# Date and time
+Sys.time()
+
+# Repository
+git2r::repository()
+
+# Session info
+sessionInfo()
+```
+
+</details>
