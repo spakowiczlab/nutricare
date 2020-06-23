@@ -24,12 +24,14 @@ simfun <- function(nblocks=10, means=c(1,1), within.sd=1, between.sd=1) {
 
 # test size of test
 set.seed(112358)
-out2 <- replicate(1000, simfun(nblocks=12, means=c(1,1,1,2,2,2)))
-hist(out2)
-mean(out2 <= 0.05)
+out2 <- lapply(5:20, function(n) replicate(1000, simfun(nblocks=n, means=c(1,2,3))))
+
+
+names(out2) <- paste0("n.", 5:20)
+lapply(out2, function(x) mean(x <= 0.05))
 ```
 
-```{r}
+```{r argument test, eval=FALSE}
 nblocks=6
 means=c(rep(1,12))
 within.sd=1
